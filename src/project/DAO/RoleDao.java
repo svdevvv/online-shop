@@ -1,6 +1,7 @@
 package project.DAO;
 
 import project.Connections.connectionManager.ConnectionManager;
+import project.dto.filter.RoleFilter;
 import project.entity.RoleEntity;
 import project.exceptions.*;
 
@@ -8,7 +9,9 @@ import javax.management.relation.Role;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class RoleDao {
 
@@ -36,6 +39,35 @@ public class RoleDao {
             
             WHERE id = ?
             """;
+
+    public List<RoleEntity> findAll(RoleFilter roleFilter) {
+        List<Object> parameters = new ArrayList<>();
+        List<String> whereSql = new ArrayList<>();
+        if (roleFilter.getRole() != null) {
+            whereSql.add("role LIKE ?");
+            parameters.add(roleFilter.getRole());
+        }
+
+        parameters.add(roleFilter.getLimit());
+        parameters.add(roleFilter.getOffset());
+        var where = whereSql.stream()
+                .collect(Collectors.joining(" AND ", " WHERE ", " LIMIT ? OFFSET ? "));
+        var sql = FIND_ALL_SQL + where;
+        try (Connection connection = ConnectionManager.get();
+             var prepareStatement = connection.prepareStatement(sql)) {
+            for (int i = 0; i < parameters.size(); i++) {
+                prepareStatement.setObject(i + 1, parameters.get(i));
+            }
+            var resultSet = prepareStatement.executeQuery();
+            List<RoleEntity> roles = new ArrayList<>();
+            while (resultSet.next()) {
+                roles.add(buildRole(resultSet));
+            }
+            return roles;
+        } catch (SQLException e) {
+            throw new FindAllException(e, " Exception in method findAll with parameters roleFilter in class RoleDao ");
+        }
+    }
 
     public List<RoleEntity> findAll() {
         try (var connection = ConnectionManager.get();
