@@ -16,7 +16,6 @@ import java.util.Optional;
 
 public class UserDao implements CrudInterface<Integer, UserEntity> {
     private static UserDao instance;
-    private final RoleDao roleDao = RoleDao.getInstance();
     private static final String PERSON_ID = "id";
     private static final String PERSON_LOGIN = "login";
     private static final String PERSON_PASSWORD = "password";
