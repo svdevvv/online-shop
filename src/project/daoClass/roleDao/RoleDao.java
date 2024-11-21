@@ -1,28 +1,30 @@
-package project.DAO;
+package project.daoClass.roleDao;
 
 import project.Connections.connectionManager.ConnectionManager;
-import project.dto.filter.RoleFilter;
-import project.entity.RoleEntity;
+import project.daoInterfaces.CrudInterface;
+import project.dtoClass.filter.roleFilter.RoleFilter;
+import project.entity.roleEntity.RoleEntity;
 import project.exceptions.*;
 
 import javax.management.relation.Role;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class RoleDao {
+public class RoleDao implements CrudInterface<Integer, RoleEntity> {
 
-    private static final RoleDao INSTANCE = new RoleDao();
+    private static RoleDao instance;
+    private static final String ROLE_ID = "id";
+    private static final String ROLE = "role";
     private static final String DELETE_SQL = """
             DELETE FROM role
             WHERE id = ?
             """;
     private static final String SAVE_SQL = """
-            INSERT INTO role(id, role) 
-            VALUES(?,?) 
+            INSERT INTO role(id, role)
+            VALUES(?,?)
             """;
     private static final String UPDATE_SQL = """
             UPDATE role
@@ -30,7 +32,7 @@ public class RoleDao {
             WHERE id = ?
             """;
     private static final String FIND_ALL_SQL = """
-            SELECT 
+            SELECT
                 id,
                 role
             FROM role
@@ -39,6 +41,9 @@ public class RoleDao {
             
             WHERE id = ?
             """;
+
+    public RoleDao() {
+    }
 
     public List<RoleEntity> findAll(RoleFilter roleFilter) {
         List<Object> parameters = new ArrayList<>();
@@ -100,10 +105,11 @@ public class RoleDao {
     }
 
     private static RoleEntity buildRole(ResultSet resultSet) throws SQLException {
-        return new RoleEntity(
-                resultSet.getInt("id"),
-                resultSet.getString("role")
-        );
+        return RoleEntity
+                .builder()
+                .id(resultSet.getInt(ROLE_ID))
+                .role(resultSet.getString(ROLE))
+                .build();
     }
 
     public void update(RoleEntity roleEntity) {
@@ -146,7 +152,10 @@ public class RoleDao {
         }
     }
 
-    public static RoleDao getInstance() {
-        return INSTANCE;
+    public static synchronized RoleDao getInstance() {
+        if (instance == null) {
+            instance = new RoleDao();
+        }
+        return instance;
     }
 }
