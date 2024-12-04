@@ -47,7 +47,7 @@ public class RoleDao implements CrudInterface<Integer, RoleEntity> {
             WHERE id = ?
             """;
 
-    public RoleDao() {
+    private RoleDao() {
     }
 
     public List<RoleEntity> findAll(RoleFilter roleFilter) {

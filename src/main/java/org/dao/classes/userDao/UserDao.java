@@ -21,7 +21,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class UserDao implements CrudInterface<Integer, UserEntity> {
-    private static UserDao instance;
+    private static UserDao INSTANCE;
     private static final String USER_ID = "id";
     private static final String USER_LOGIN = "login";
     private static final String USER_PASSWORD = "password";
@@ -114,7 +114,7 @@ public class UserDao implements CrudInterface<Integer, UserEntity> {
     @Override
     public Optional<UserEntity> findById(Integer id) {
         try (var connection = ConnectionManager.get();
-             var prepareStatement = connection.prepareStatement(FIND_BY_ID_SQL + id)) {
+             var prepareStatement = connection.prepareStatement(FIND_BY_ID_SQL)) {
             prepareStatement.setInt(1, id);
 
             ResultSet resultSet = prepareStatement.executeQuery();
@@ -187,9 +187,9 @@ public class UserDao implements CrudInterface<Integer, UserEntity> {
     }
 
     public static UserDao getInstance() {
-        if (instance == null) {
+        if (INSTANCE == null) {
             return new UserDao();
         }
-        return instance;
+        return INSTANCE;
     }
 }

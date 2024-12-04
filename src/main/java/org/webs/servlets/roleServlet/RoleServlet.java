@@ -1,4 +1,4 @@
-package org.servlets.roleServlet;
+package org.webs.servlets.roleServlet;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -19,15 +19,15 @@ public class RoleServlet extends HttpServlet {
         resp.setCharacterEncoding("UTF-8");
 
         try (var printWriter = resp.getWriter()) {
-            printWriter.write("<h1>Список ролей</h1>");
+            printWriter.write("<h1>^_^:(</h1>");
             printWriter.write("<ul>");
-            roleService.allRoles().forEach(roleDto -> {
-                printWriter.write("""
-                        <li>
-                            %s
-                        </li>
-                        """.formatted(roleDto.getRoleName()));
-            });
+//            roleService.findAll().forEach(roleDto -> {
+//                printWriter.write("""
+//                        <li>
+//                            %s
+//                        </li>
+//                        """.formatted(roleDto.getRoleName()));
+//            });
             printWriter.write("</ul>");
         }
     }

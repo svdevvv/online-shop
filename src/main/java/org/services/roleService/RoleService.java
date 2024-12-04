@@ -14,7 +14,7 @@ public class RoleService {
 
     }
 
-    public List<RoleDto> allRoles() {
+    public List<RoleDto> findAll() {
         return roleDao.findAll().stream()
                 .map(roleEntity -> RoleDto.builder()
                         .roleName(roleEntity.getRole())
