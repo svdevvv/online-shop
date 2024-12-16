@@ -1,7 +1,10 @@
 package org.dao.classes.userDao;
 
+import lombok.SneakyThrows;
 import org.connection.connectionManager.ConnectionManager;
 import org.dao.interfaces.CrudInterface;
+import org.entity.enums.gender.Gender;
+import org.exceptions.findByLoginOrEmail.FindByLoginOrEmail;
 import org.services.filters.userFilter.UserFilter;
 import org.entity.roleEntity.RoleEntity;
 import org.entity.userEntity.UserEntity;
@@ -11,10 +14,7 @@ import org.exceptions.findByIdException.FindByIdException;
 import org.exceptions.saveMethodException.SaveMethodException;
 import org.exceptions.updateMethodException.UpdateMethodException;
 
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -26,33 +26,47 @@ public class UserDao implements CrudInterface<Integer, UserEntity> {
     private static final String USER_LOGIN = "login";
     private static final String USER_PASSWORD = "password";
     private static final String USER_ROLE = "role";
+    private static final String USER_FIRST_NAME = "first_name";
+    private static final String USER_LAST_NAME = "last_name";
+    private static final String USER_EMAIL = "email";
+    private static final String USER_BIRTHDAY = "birthday";
+    private static final String USER_GENDER = "gender";
 
     private static final String DELETE_SQL = """
             DELETE FROM "user"
             WHERE id = ?
             """;
     private static final String SAVE_SQL = """
-            INSERT INTO "user"(login, password, role_id)
-            VALUES (?,?,?)
+            INSERT INTO "user"(login, password, role, first_name, last_name, email, birthday, gender)
+            VALUES (?,?,?,?,?,?,?,?)
             """;
     private static final String UPDATE_SQL = """
             UPDATE "user"
-            SET login = ?,
-                password = ?,
-                role_id = ?
+            SET login = ?, password = ?, role = ?, first_name = ?, last_name = ?, email = ?, birthday = ?, gender = ?
             WHERE id = ?
             """;
     private static final String FIND_ALL_SQL = """
             SELECT "user".id,
-            login,
-            password,
-            role
+                   "user".login,
+                   "user".password,
+                   r.role,
+                   "user".first_name,
+                   "user".last_name,
+                   "user".email,
+                   "user".birthday,
+                   gender
             FROM "user"
-            JOIN role r
-                on r.id = "user".role_id
+                     JOIN role r
+                          on r.id = "user".role
             """;
     private static final String FIND_BY_ID_SQL = FIND_ALL_SQL + """
             WHERE "user".id = ?
+            """;
+    private static final String FIND_BY_LOGIN_SQL = """
+            SELECT u.id, login, password, r.role, first_name, last_name, email, birthday, gender
+            FROM "user" u
+            JOIN public.role r on r.id = u.role
+            WHERE login = ? AND password = ?;
             """;
 
     private UserDao() {
@@ -70,6 +84,7 @@ public class UserDao implements CrudInterface<Integer, UserEntity> {
         }
     }
 
+    @SneakyThrows
     @Override
     public UserEntity save(UserEntity entity) {
         try (var connection = ConnectionManager.get();
@@ -78,15 +93,17 @@ public class UserDao implements CrudInterface<Integer, UserEntity> {
             prepareStatement.setString(1, entity.getLogin());
             prepareStatement.setString(2, entity.getPassword());
             prepareStatement.setInt(3, entity.getRole().getId());
+            prepareStatement.setString(4, entity.getFirstName());
+            prepareStatement.setString(5, entity.getLastName());
+            prepareStatement.setString(6, entity.getEmail());
+            prepareStatement.setObject(7, entity.getBirthday());
+            prepareStatement.setObject(8, entity.getGender().name());
 
             prepareStatement.executeUpdate();
             var generatedKeys = prepareStatement.getGeneratedKeys();
-            if (generatedKeys.next()) {
-                entity.setId(generatedKeys.getInt("id"));
-            }
+            generatedKeys.next();
+            entity.setId(generatedKeys.getObject("id", Integer.class));
             return entity;
-        } catch (SQLException e) {
-            throw new SaveMethodException(e, " Exception in save methode in UserDao class");
         }
     }
 
@@ -103,12 +120,44 @@ public class UserDao implements CrudInterface<Integer, UserEntity> {
             if (entity.getRole() != null) {
                 prepareStatement.setInt(3, entity.getRole().getId());
             }
+            if (entity.getFirstName() != null) {
+                prepareStatement.setString(4, entity.getFirstName());
+            }
+            if (entity.getLastName() != null) {
+                prepareStatement.setString(5, entity.getLastName());
+            }
+            if (entity.getEmail() != null) {
+                prepareStatement.setString(6, entity.getEmail());
+            }
+            if (entity.getBirthday() != null) {
+                prepareStatement.setDate(7, Date.valueOf(entity.getBirthday()));
+            }
+            if (entity.getGender() != null) {
+                prepareStatement.setObject(8, entity.getGender().name());
+            }
 
             prepareStatement.executeUpdate();
         } catch (SQLException e) {
             throw new UpdateMethodException(e, " Exception in update method in UserDao class");
         }
 
+    }
+
+    public Optional<UserEntity> findByLoginAndPassword(String login , String password) {
+        try (var connection = ConnectionManager.get();
+             var preparedStatement = connection.prepareStatement(FIND_BY_LOGIN_SQL)) {
+            preparedStatement.setString(1, login);
+            preparedStatement.setString(2, password);
+
+            var resultSet = preparedStatement.executeQuery();
+            UserEntity user = null;
+            while (resultSet.next()) {
+                user = buildUser(resultSet);
+            }
+            return Optional.ofNullable(user);
+        } catch (SQLException e) {
+            throw new FindByLoginOrEmail(e, " Exception in findByLoginOrEmailAndPassword method in UserDao class.");
+        }
     }
 
     @Override
@@ -127,11 +176,12 @@ public class UserDao implements CrudInterface<Integer, UserEntity> {
             throw new FindByIdException(e, " Exception in findById method in UserDao class");
         }
     }
-    public List<UserEntity> findAll(UserFilter userFilter){
+
+    public List<UserEntity> findAll(UserFilter userFilter) {
         List<Object> parametersUser = new ArrayList<>();
         List<String> whereSqlUser = new ArrayList<>();
-        if(userFilter
-                   .getRole() != null){
+        if (userFilter
+                    .getRole() != null) {
             whereSqlUser.add(" role LIKE ?");
             parametersUser.add(userFilter.getRole());
         }
@@ -139,7 +189,7 @@ public class UserDao implements CrudInterface<Integer, UserEntity> {
         parametersUser.add(userFilter.getOffset());
         var whereUser = whereSqlUser.stream()
                 .collect(Collectors.joining(" AND ", " WHERE ", " LIMIT ? OFFSET ?"));
-        var sqlUser =  FIND_ALL_SQL + whereUser;
+        var sqlUser = FIND_ALL_SQL + whereUser;
         try (Connection connection = ConnectionManager.get();
              var prepareStatement = connection.prepareStatement(sqlUser)) {
             for (int i = 0; i < parametersUser.size(); i++) {
@@ -183,6 +233,11 @@ public class UserDao implements CrudInterface<Integer, UserEntity> {
                 .login(resultSet.getString(USER_LOGIN))
                 .password(resultSet.getString(USER_PASSWORD))
                 .role(roleEntity)
+                .firstName(resultSet.getString(USER_FIRST_NAME))
+                .lastName(resultSet.getString(USER_LAST_NAME))
+                .email(resultSet.getString(USER_EMAIL))
+                .birthday(resultSet.getDate(USER_BIRTHDAY).toLocalDate())
+                .gender(Gender.valueOf(resultSet.getString(USER_GENDER)))
                 .build();
     }
 
