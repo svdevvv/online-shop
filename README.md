@@ -1,2 +1,3 @@
 # online-shop
 Project which can...
+Hello to those who read this! This project was a test of my knowledge and skills. Now I am doing the same concept of the project, but with a more thoughtful structure and elimination of errors and problems that arose in this one, very soon another branch will appear here with a new project where everything will be much better, thank you for reading this text and have a nice day!:)
